@@ -355,7 +355,45 @@ function cityProfile(c) {
         <p>${escapeHtml(c.community)}</p>
       </div>
 
+      ${liveUpdates(c)}
+
       ${famousAndSocial(c)}
+    </div>
+  `;
+}
+
+function liveUpdates(c) {
+  const origins = [
+    ['Karachi', 'Karachi'],
+    ['Lahore', 'Lahore'],
+    ['Islamabad', 'Islamabad']
+  ];
+  const flightBtns = origins.map(([label, city]) => {
+    const url = `https://www.google.com/travel/flights?q=${encodeURIComponent('Flights from ' + city + ' to ' + c.name)}`;
+    return `<a href="${url}" target="_blank" rel="noopener" class="live-pill">✈️ From ${label}</a>`;
+  }).join('');
+
+  const visaNews = `https://news.google.com/search?q=${encodeURIComponent(c.country + ' visa news Pakistani passport')}`;
+  const cityNews = `https://news.google.com/search?q=${encodeURIComponent(c.name + ' ' + c.country + ' news')}`;
+
+  return `
+    <div class="section span-2 live-section">
+      <h2>Live updates <span class="tag">real-time when you click</span></h2>
+      <div class="two-col">
+        <div>
+          <h3>✈️ Live flight prices</h3>
+          <p class="live-note">Current fares to ${escapeHtml(c.name)}, pulled live from Google Flights:</p>
+          <div class="live-pills">${flightBtns}</div>
+        </div>
+        <div>
+          <h3>📰 Latest visa &amp; local news</h3>
+          <p class="live-note">Up-to-the-minute headlines — updated automatically:</p>
+          <div class="live-pills">
+            <a href="${visaNews}" target="_blank" rel="noopener" class="live-pill news">🛂 ${escapeHtml(c.country)} visa news</a>
+            <a href="${cityNews}" target="_blank" rel="noopener" class="live-pill news">🗞️ ${escapeHtml(c.name)} headlines</a>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 }

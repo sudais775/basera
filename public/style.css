@@ -625,3 +625,41 @@ main {
   border-color: var(--viridian);
   color: var(--viridian);
 }
+
+/* Live updates */
+.live-section h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+.live-note {
+  color: #5c6962;
+  font-size: 0.88rem;
+  margin: 0 0 0.7rem;
+}
+.live-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: linear-gradient(135deg, rgba(0,113,227,0.10), rgba(88,86,214,0.10));
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.live-pill:hover {
+  transform: translateY(-1px);
+  border-color: var(--viridian);
+  box-shadow: 0 6px 18px rgba(0,113,227,0.18);
+}
+.live-pill.news {
+  background: linear-gradient(135deg, rgba(255,149,0,0.12), rgba(255,45,85,0.10));
+}
