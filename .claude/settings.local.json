@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(node -e 'const c=JSON.parse\\(require\\(\"fs\"\\).readFileSync\\(\"/Users/apple/Documents/basera/data/cities.json\"\\)\\);console.log\\(c[0].famous_people, c[0].social\\)')",
+      "Bash(pgrep -fl \"node server.js\"; cat /tmp/basera.log 2>/dev/null | tail -5)",
+      "Bash(curl -sv \"http://localhost:3000/api/search\" -o /tmp/all.json)",
+      "Read(//tmp/**)",
+      "Bash(node -e 'const a=JSON.parse\\(require\\(\"fs\"\\).readFileSync\\(\"/tmp/all.json\"\\)\\);console.log\\(\"total:\",a.length\\)')",
+      "Bash(kill 18656)",
+      "Bash(node server.js)",
+      "Bash(curl -s \"http://localhost:3000/api/search\" -o /tmp/all.json)",
+      "Bash(node -e 'const a=JSON.parse\\(require\\(\"fs\"\\).readFileSync\\(\"/tmp/all.json\"\\)\\);console.log\\(\"total:\",a.length,\"| sample:\",a[100].name,a[100].continent\\)')",
+      "Bash(curl -s http://localhost:3000/api/city/almaty)",
+      "Bash(lsof -iTCP:3000 -sTCP:LISTEN)",
+      "Bash(curl -s http://localhost:3000/api/continents)",
+      "Bash(node -e 'const a=JSON.parse\\(require\\(\"fs\"\\).readFileSync\\(\"/tmp/all.json\"\\)\\);console.log\\(\"total:\",a.length\\);const byCont={};a.forEach\\(c=>byCont[c.continent]=\\(byCont[c.continent]||0\\)+1\\);console.log\\(byCont\\)')",
+      "Bash(node -e 'let d=\"\";process.stdin.on\\(\"data\",c=>d+=c\\).on\\(\"end\",\\(\\)=>{const c=JSON.parse\\(d\\);console.log\\(c.name,\"|\",c.continent,\"|\",c.famous_people[0],\"|\",c.social.instagram\\)}\\)')",
+      "Bash(npm install *)"
+    ]
+  }
+}
