@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نماز کے اوقات — Prayer Times &amp; Mosque Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/dseg@0.46.0/css/dseg.css" rel="stylesheet">
+<style>
+  :root {
+    --board: #101010;
+    --board-edge: #2a2a2a;
+    --led-red: #ff2a1a;
+    --led-red-dim: rgba(255, 42, 26, 0.12);
+    --led-green: #7dff3a;
+    --led-green-dim: rgba(125, 255, 58, 0.12);
+    --led-amber: #ffb347;
+    --bg: #1c1a17;
+    --panel: #26231f;
+    --text: #f2ede4;
+    --muted: #a89f92;
+    --wood: linear-gradient(180deg, #3a3128 0%, #2b241d 100%);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Public Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .seg { font-family: 'DSEG7 Classic', 'IBM Plex Mono', monospace; }
+  .urdu { font-family: 'Noto Nastaliq Urdu', serif; direction: rtl; }
+
+  .wrap { max-width: 860px; margin: 0 auto; padding: 16px 16px 64px; }
+
+  .topnav { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 18px; }
+  .topnav a { color: var(--muted); text-decoration: none; font-size: 14px; }
+  .topnav a:hover { color: var(--text); }
+  .topnav .title { font-weight: 700; font-size: 18px; color: var(--text); }
+
+  /* ---- Location bar ---- */
+  .locbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .locbar input {
+    flex: 1; min-width: 200px;
+    background: var(--panel); color: var(--text);
+    border: 1px solid #3a352e; border-radius: 10px;
+    padding: 12px 14px; font-size: 15px; font-family: inherit;
+  }
+  .locbar input:focus { outline: 2px solid var(--led-amber); border-color: transparent; }
+  button {
+    background: var(--panel); color: var(--text);
+    border: 1px solid #3a352e; border-radius: 10px;
+    padding: 12px 16px; font-size: 14px; font-weight: 600;
+    font-family: inherit; cursor: pointer; white-space: nowrap;
+  }
+  button:hover { border-color: var(--led-amber); }
+  button.primary { background: var(--led-amber); color: #201700; border-color: transparent; }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  .locname { color: var(--muted); font-size: 14px; margin-bottom: 14px; min-height: 20px; }
+  .locname b { color: var(--text); }
+
+  /* ---- The LED board ---- */
+  .board {
+    background: var(--board);
+    border: 6px solid var(--board-edge);
+    border-radius: 14px;
+    padding: 22px 20px 18px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 0 60px rgba(0,0,0,0.8);
+    position: relative;
+  }
+  .board::before {
+    content: ""; position: absolute; inset: 0; border-radius: 8px; pointer-events: none;
+    background: radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.05), transparent 60%);
+  }
+  .board-head { text-align: center; margin-bottom: 14px; }
+  .board-head .urdu { color: var(--led-amber); font-size: 26px; line-height: 2; text-shadow: 0 0 14px rgba(255,179,71,0.5); }
+  .board-head .en { color: var(--muted); font-size: 12px; letter-spacing: 3px; text-transform: uppercase; }
+
+  .clock-row { text-align: center; padding: 8px 0 16px; }
+  .clock-row .seg {
+    color: var(--led-green); font-size: clamp(40px, 9vw, 64px);
+    text-shadow: 0 0 18px rgba(125,255,58,0.55);
+  }
+  .clock-row .ampm { color: var(--led-green); font-size: 16px; font-family: 'IBM Plex Mono', monospace; margin-left: 6px; }
+  .clock-row .ghost { color: var(--led-green-dim); }
+  .date-row { text-align: center; color: var(--muted); font-size: 13px; padding-bottom: 14px; border-bottom: 1px solid #222; }
+  .date-row .hijri { color: var(--led-amber); }
+
+  .times-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 10px; padding-top: 14px; }
+  @media (max-width: 620px) { .times-grid { grid-template-columns: repeat(2, 1fr); } }
+  .ptime {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 12px 6px 10px; border-radius: 10px;
+  }
+  .ptime .label-urdu { color: var(--led-amber); font-size: 17px; line-height: 1.9; text-shadow: 0 0 10px rgba(255,179,71,0.4); }
+  .ptime .label-en { color: var(--muted); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  .ptime .seg {
+    color: var(--led-red); font-size: clamp(26px, 5.4vw, 34px);
+    text-shadow: 0 0 14px rgba(255,42,26,0.6);
+  }
+  .ptime .ghost { color: var(--led-red-dim); }
+  .ptime .ap { color: var(--led-red); font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
+  .ptime.sunrise .seg, .ptime.sunrise .ap { color: var(--led-green); text-shadow: 0 0 14px rgba(125,255,58,0.5); }
+  .ptime.next { background: rgba(255,42,26,0.07); outline: 1px solid rgba(255,42,26,0.35); }
+  .ptime.next .label-en { color: var(--led-red); }
+  .ptime.next .seg { animation: blink 1.6s step-start infinite; }
+  @keyframes blink { 50% { opacity: 0.35; } }
+
+  .next-banner {
+    margin-top: 16px; text-align: center; border-top: 1px solid #222; padding-top: 14px;
+    color: var(--muted); font-size: 14px;
+  }
+  .next-banner .seg { color: var(--led-green); font-size: 24px; text-shadow: 0 0 12px rgba(125,255,58,0.5); margin: 0 6px; }
+  .next-banner b { color: var(--text); }
+
+  /* ---- Settings ---- */
+  .settings { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 18px 0 30px; }
+  .settings label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .settings select {
+    background: var(--panel); color: var(--text); border: 1px solid #3a352e;
+    border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 13px;
+  }
+  #notifyBtn.on { background: #1f3d1a; border-color: var(--led-green); color: var(--led-green); }
+
+  /* ---- Mosques ---- */
+  h2 { font-size: 18px; margin: 26px 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .mosque-controls { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .mosque-list { display: flex; flex-direction: column; gap: 10px; }
+  .mosque {
+    background: var(--panel); border: 1px solid #3a352e; border-radius: 12px;
+    padding: 14px 16px; display: flex; align-items: center; gap: 14px;
+  }
+  .mosque.fav { border-color: var(--led-amber); }
+  .mosque .icon { font-size: 26px; }
+  .mosque .info { flex: 1; min-width: 0; }
+  .mosque .name { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+  .mosque .meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .mosque .dist { color: var(--led-amber); font-weight: 600; }
+  .mosque .actions { display: flex; gap: 8px; align-items: center; }
+  .mosque .actions a {
+    color: var(--text); text-decoration: none; font-size: 13px; font-weight: 600;
+    border: 1px solid #3a352e; border-radius: 8px; padding: 8px 12px;
+  }
+  .mosque .actions a:hover { border-color: var(--led-amber); }
+  .star { background: none; border: none; font-size: 22px; padding: 4px 6px; color: #575046; }
+  .star:hover { color: var(--led-amber); border: none; }
+  .star.active { color: var(--led-amber); text-shadow: 0 0 10px rgba(255,179,71,0.6); }
+  .empty { color: var(--muted); font-size: 14px; padding: 18px; text-align: center; background: var(--panel); border-radius: 12px; }
+  .spin { display: inline-block; animation: rot 1s linear infinite; }
+  @keyframes rot { to { transform: rotate(360deg); } }
+
+  .note { color: var(--muted); font-size: 12px; margin-top: 30px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="topnav">
+    <span class="title">🕌 Prayer Times</span>
+    <a href="../index.html">← Basera home</a>
+  </nav>
+
+  <div class="locbar">
+    <input id="searchInput" type="text" placeholder="Search a city or address… (e.g. Peshawar, Pakistan)" autocomplete="off">
+    <button id="searchBtn">Search</button>
+    <button id="geoBtn" class="primary">📍 Use my location</button>
+  </div>
+  <div class="locname" id="locName">Waiting for a location — tap “Use my location” or search above.</div>
+
+  <!-- LED board, styled after a real mosque prayer clock -->
+  <div class="board">
+    <div class="board-head">
+      <div class="urdu">نماز کے اوقات</div>
+      <div class="en">Prayer Timings</div>
+    </div>
+    <div class="clock-row">
+      <span class="seg" id="clock"><span class="ghost">88:88:88</span></span><span class="ampm" id="clockAmpm"></span>
+    </div>
+    <div class="date-row" id="dateRow"></div>
+
+    <div class="times-grid" id="timesGrid"></div>
+
+    <div class="next-banner" id="nextBanner"></div>
+  </div>
+
+  <div class="settings">
+    <label>Method
+      <select id="methodSel">
+        <option value="Karachi">Univ. of Islamic Sciences, Karachi</option>
+        <option value="MWL">Muslim World League</option>
+        <option value="ISNA">ISNA (North America)</option>
+        <option value="Egypt">Egyptian General Authority</option>
+        <option value="Makkah">Umm al-Qura, Makkah</option>
+      </select>
+    </label>
+    <label>Asr
+      <select id="asrSel">
+        <option value="Standard">Standard (Shafiʿi)</option>
+        <option value="Hanafi">Hanafi</option>
+      </select>
+    </label>
+    <button id="notifyBtn">🔔 Notify me at prayer times</button>
+  </div>
+
+  <h2>Nearest Mosques</h2>
+  <p class="sub">From OpenStreetMap, sorted by distance. Tap ★ to save a favorite mosque.</p>
+  <div class="mosque-controls">
+    <label style="font-size:13px;color:var(--muted)">Within
+      <select id="radiusSel">
+        <option value="1000">1 km</option>
+        <option value="2000" selected>2 km</option>
+        <option value="5000">5 km</option>
+        <option value="10000">10 km</option>
+      </select>
+    </label>
+    <button id="refreshMosques">Refresh</button>
+  </div>
+  <div class="mosque-list" id="favList"></div>
+  <div class="mosque-list" id="mosqueList" style="margin-top:10px">
+    <div class="empty">Set a location above to find mosques near you.</div>
+  </div>
+
+  <p class="note">
+    Times are shown in your device's timezone and calculated on your device from your coordinates using standard astronomical formulas —
+    they may differ by a few minutes from your local mosque's announced times, so treat the mosque as
+    the final word. Notifications fire while this page is open in your browser (add it to your home
+    screen and keep the tab alive for best results). Mosque data © OpenStreetMap contributors.
+  </p>
+</div>
+
+<script>
+"use strict";
+
+/* ================= Prayer time calculation (PrayTimes-style) ================= */
+const METHODS = {
+  MWL:     { fajr: 18,   isha: { angle: 17 } },
+  ISNA:    { fajr: 15,   isha: { angle: 15 } },
+  Egypt:   { fajr: 19.5, isha: { angle: 17.5 } },
+  Karachi: { fajr: 18,   isha: { angle: 18 } },
+  Makkah:  { fajr: 18.5, isha: { minutes: 90 } }
+};
+
+const DEG = Math.PI / 180;
+const dsin = d => Math.sin(d * DEG), dcos = d => Math.cos(d * DEG), dtan = d => Math.tan(d * DEG);
+const darcsin = x => Math.asin(x) / DEG, darccos = x => Math.acos(x) / DEG;
+const darctan2 = (y, x) => Math.atan2(y, x) / DEG, darccot = x => Math.atan2(1, x) / DEG;
+const fixAngle = a => ((a % 360) + 360) % 360;
+const fixHour  = h => ((h % 24) + 24) % 24;
+
+function julian(year, month, day) {
+  if (month <= 2) { year -= 1; month += 12; }
+  const A = Math.floor(year / 100);
+  const B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + B - 1524.5;
+}
+
+function sunPosition(jd) {
+  const D = jd - 2451545.0;
+  const g = fixAngle(357.529 + 0.98560028 * D);
+  const q = fixAngle(280.459 + 0.98564736 * D);
+  const L = fixAngle(q + 1.915 * dsin(g) + 0.020 * dsin(2 * g));
+  const e = 23.439 - 0.00000036 * D;
+  const RA = fixHour(darctan2(dcos(e) * dsin(L), dcos(L)) / 15);
+  return {
+    declination: darcsin(dsin(e) * dsin(L)),
+    equation: q / 15 - RA
+  };
+}
+
+// All intermediate times are in "floating hours" of local solar-adjusted time.
+function computePrayerTimes(date, lat, lng, tz, methodKey, asrFactor) {
+  const jDate = julian(date.getFullYear(), date.getMonth() + 1, date.getDate()) - lng / (15 * 24);
+  const method = METHODS[methodKey] || METHODS.Karachi;
+
+  const midDay = t => {
+    const eqt = sunPosition(jDate + t).equation;
+    return fixHour(12 - eqt);
+  };
+  // angle below horizon; ccw = before noon
+  const sunAngleTime = (angle, t, ccw) => {
+    const decl = sunPosition(jDate + t).declination;
+    const noon = midDay(t);
+    const cosH = (-dsin(angle) - dsin(decl) * dsin(lat)) / (dcos(decl) * dcos(lat));
+    if (cosH < -1 || cosH > 1) return NaN; // sun never reaches this angle (high latitudes)
+    const diff = darccos(cosH) / 15;
+    return noon + (ccw ? -diff : diff);
+  };
+  const asrTime = (factor, t) => {
+    const decl = sunPosition(jDate + t).declination;
+    const angle = -darccot(factor + dtan(Math.abs(lat - decl)));
+    return sunAngleTime(angle, t, false);
+  };
+  const riseSetAngle = 0.833;
+
+  // one refinement pass over rough day-portions
+  let t = { fajr: 5 / 24, sunrise: 6 / 24, dhuhr: 12 / 24, asr: 13 / 24, sunset: 18 / 24, isha: 18 / 24 };
+  let times = {};
+  for (let i = 0; i < 2; i++) {
+    times = {
+      fajr:    sunAngleTime(method.fajr, t.fajr, true),
+      sunrise: sunAngleTime(riseSetAngle, t.sunrise, true),
+      dhuhr:   midDay(t.dhuhr),
+      asr:     asrTime(asrFactor, t.asr),
+      maghrib: sunAngleTime(riseSetAngle, t.sunset, false),
+      isha:    method.isha.angle != null ? sunAngleTime(method.isha.angle, t.isha, false) : NaN
+    };
+    t = {
+      fajr: times.fajr / 24 || t.fajr, sunrise: times.sunrise / 24 || t.sunrise,
+      dhuhr: times.dhuhr / 24, asr: times.asr / 24 || t.asr,
+      sunset: times.maghrib / 24 || t.sunset, isha: (times.isha || times.maghrib) / 24 || t.isha
+    };
+  }
+
+  // convert from solar time to clock time
+  const adjust = h => isNaN(h) ? NaN : fixHour(h + tz - lng / 15);
+  const out = {};
+  for (const k of Object.keys(times)) out[k] = adjust(times[k]);
+  if (method.isha.minutes != null) out.isha = fixHour(out.maghrib + method.isha.minutes / 60);
+
+  // High-latitude fallback (angle-based night fraction), for summers where the
+  // sun never reaches the Fajr/Isha depression angle.
+  if (!isNaN(out.sunrise) && !isNaN(out.maghrib)) {
+    const night = fixHour(out.sunrise - out.maghrib);
+    let portion = (method.fajr / 60) * night;
+    if (isNaN(out.fajr) || fixHour(out.sunrise - out.fajr) > portion) out.fajr = fixHour(out.sunrise - portion);
+    if (method.isha.angle != null) {
+      portion = (method.isha.angle / 60) * night;
+      if (isNaN(out.isha) || fixHour(out.isha - out.maghrib) > portion) out.isha = fixHour(out.maghrib + portion);
+    }
+  }
+  return out; // hours as floats in local clock time
+}
+
+/* ================= App state ================= */
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, fallback) { try { return JSON.parse(localStorage.getItem('pt_' + k)) ?? fallback; } catch { return fallback; } },
+  set(k, v) { localStorage.setItem('pt_' + k, JSON.stringify(v)); }
+};
+
+let state = {
+  loc: store.get('loc', null),        // {lat, lng, name}
+  method: store.get('method', 'Karachi'),
+  asr: store.get('asr', 'Standard'),
+  notify: store.get('notify', false),
+  favorites: store.get('favorites', []), // [{id, name, lat, lng}]
+  times: null,                        // today's computed times
+  notified: store.get('notified', {}) // {dateKey_prayer: true}
+};
+
+const PRAYERS = [
+  { key: 'fajr',    en: 'Fajr',    ur: 'الفجر' },
+  { key: 'sunrise', en: 'Sunrise', ur: 'اشراق' },
+  { key: 'dhuhr',   en: 'Zuhr',    ur: 'الظہر' },
+  { key: 'asr',     en: 'Asr',     ur: 'العصر' },
+  { key: 'maghrib', en: 'Maghrib', ur: 'المغرب' },
+  { key: 'isha',    en: 'Isha',    ur: 'العشاء' }
+];
+const NOTIFY_KEYS = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+
+function tzOffsetHours(date) { return -date.getTimezoneOffset() / 60; }
+
+function fmt12(hours) {
+  if (isNaN(hours)) return null;
+  let h = Math.floor(hours), m = Math.round((hours - h) * 60);
+  if (m === 60) { m = 0; h = (h + 1) % 24; }
+  const ap = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return { text: `${h12}:${String(m).padStart(2, '0')}`, ap, minutes: h * 60 + m };
+}
+
+function recomputeTimes() {
+  if (!state.loc) return;
+  const now = new Date();
+  state.times = computePrayerTimes(now, state.loc.lat, state.loc.lng, tzOffsetHours(now),
+    state.method, state.asr === 'Hanafi' ? 2 : 1);
+  renderBoard();
+}
+
+/* ================= Rendering ================= */
+function nextPrayerInfo() {
+  if (!state.times) return null;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  for (const p of PRAYERS) {
+    if (p.key === 'sunrise') continue;
+    const f = fmt12(state.times[p.key]);
+    if (f && f.minutes > nowMin) return { ...p, at: f, inMin: f.minutes - nowMin };
+  }
+  // all passed today -> tomorrow's Fajr
+  const tomorrow = new Date(now.getTime() + 86400000);
+  const t = computePrayerTimes(tomorrow, state.loc.lat, state.loc.lng, tzOffsetHours(tomorrow),
+    state.method, state.asr === 'Hanafi' ? 2 : 1);
+  const f = fmt12(t.fajr);
+  return f ? { ...PRAYERS[0], at: f, inMin: (24 * 60 - nowMin) + f.minutes, tomorrow: true } : null;
+}
+
+function renderBoard() {
+  const grid = $('timesGrid');
+  if (!state.times) { grid.innerHTML = ''; $('nextBanner').textContent = ''; return; }
+  const next = nextPrayerInfo();
+  grid.innerHTML = PRAYERS.map(p => {
+    const f = fmt12(state.times[p.key]);
+    const isNext = next && !next.tomorrow && next.key === p.key;
+    return `<div class="ptime ${p.key === 'sunrise' ? 'sunrise' : ''} ${isNext ? 'next' : ''}">
+      <span class="label-urdu">${p.ur}</span>
+      <span class="label-en">${p.en}</span>
+      <span class="seg">${f ? f.text : '--:--'}</span>
+      <span class="ap">${f ? f.ap : ''}</span>
+    </div>`;
+  }).join('');
+
+  if (next) {
+    const h = Math.floor(next.inMin / 60), m = Math.ceil(next.inMin % 60);
+    const inTxt = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    $('nextBanner').innerHTML =
+      `Next prayer: <b>${next.en}${next.tomorrow ? ' (tomorrow)' : ''}</b> at` +
+      `<span class="seg">${next.at.text}</span>${next.at.ap} — in <b>${inTxt}</b>`;
+  } else {
+    $('nextBanner').textContent = '';
+  }
+}
+
+function tickClock() {
+  const now = new Date();
+  let h = now.getHours();
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 === 0 ? 12 : h % 12;
+  $('clock').textContent =
+    `${h}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+  $('clockAmpm').textContent = ap;
+
+  const greg = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  let hijri = '';
+  try {
+    hijri = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' }).format(now);
+  } catch (e) { /* Hijri calendar unsupported in this browser */ }
+  $('dateRow').innerHTML = `${greg}${hijri ? ' &nbsp;•&nbsp; <span class="hijri">' + hijri + '</span>' : ''}`;
+}
+
+/* ================= Notifications ================= */
+function dateKey(d) { return d.toISOString().slice(0, 10); }
+
+function checkNotifications() {
+  if (!state.notify || !state.times || Notification.permission !== 'granted') return;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  for (const key of NOTIFY_KEYS) {
+    const f = fmt12(state.times[key]);
+    if (!f) continue;
+    const id = dateKey(now) + '_' + key;
+    // fire within a 3-minute window of the prayer time, once per day per prayer
+    if (nowMin >= f.minutes && nowMin < f.minutes + 3 && !state.notified[id]) {
+      state.notified[id] = true;
+      store.set('notified', state.notified);
+      const p = PRAYERS.find(x => x.key === key);
+      try {
+        new Notification(`🕌 It's time for ${p.en} prayer`, {
+          body: `${p.en} (${p.ur}) — ${f.text} ${f.ap}${state.loc ? ' · ' + state.loc.name : ''}`,
+          tag: id
+        });
+      } catch (e) { /* notification constructor unavailable */ }
+      beep();
+    }
+  }
+}
+
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99]; // gentle C-E-G chime
+    notes.forEach((freq, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = freq; o.type = 'sine';
+      const t0 = ctx.currentTime + i * 0.35;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.9);
+      o.start(t0); o.stop(t0 + 1);
+    });
+  } catch (e) { /* audio unavailable */ }
+}
+
+function renderNotifyBtn() {
+  const btn = $('notifyBtn');
+  const on = state.notify && Notification.permission === 'granted';
+  btn.classList.toggle('on', on);
+  btn.textContent = on ? '🔔 Prayer notifications ON' : '🔔 Notify me at prayer times';
+}
+
+async function toggleNotify() {
+  if (!('Notification' in window)) { alert('This browser does not support notifications.'); return; }
+  if (state.notify && Notification.permission === 'granted') {
+    state.notify = false;
+  } else {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { alert('Notifications were not allowed by the browser.'); return; }
+    state.notify = true;
+    new Notification('🕌 Prayer notifications enabled', {
+      body: 'You will be notified at each prayer time while this page is open.'
+    });
+  }
+  store.set('notify', state.notify);
+  renderNotifyBtn();
+}
+
+/* ================= Location ================= */
+function setLocation(lat, lng, name) {
+  state.loc = { lat, lng, name };
+  store.set('loc', state.loc);
+  $('locName').innerHTML = `📍 <b>${escapeHtml(name)}</b> &nbsp;(${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+  recomputeTimes();
+  loadMosques();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=14`,
+      { headers: { 'Accept-Language': 'en' } });
+    const j = await r.json();
+    const a = j.address || {};
+    return [a.suburb || a.town || a.village || a.city_district, a.city || a.county, a.country]
+      .filter(Boolean).join(', ') || j.display_name || 'Your location';
+  } catch (e) { return 'Your location'; }
+}
+
+function useMyLocation() {
+  if (!navigator.geolocation) { alert('Geolocation is not supported by this browser.'); return; }
+  const btn = $('geoBtn');
+  btn.disabled = true; btn.textContent = 'Locating…';
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    const name = await reverseGeocode(lat, lng);
+    setLocation(lat, lng, name);
+    btn.disabled = false; btn.textContent = '📍 Use my location';
+  }, err => {
+    btn.disabled = false; btn.textContent = '📍 Use my location';
+    alert('Could not get your location (' + err.message + '). You can search for your city instead.');
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+}
+
+async function searchPlace() {
+  const q = $('searchInput').value.trim();
+  if (!q) return;
+  const btn = $('searchBtn');
+  btn.disabled = true; btn.textContent = 'Searching…';
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(q)}`,
+      { headers: { 'Accept-Language': 'en' } });
+    const j = await r.json();
+    if (!j.length) { alert('No place found for "' + q + '". Try adding the country name.'); }
+    else setLocation(parseFloat(j[0].lat), parseFloat(j[0].lon), j[0].display_name.split(',').slice(0, 3).join(','));
+  } catch (e) {
+    alert('Search failed — check your internet connection and try again.');
+  }
+  btn.disabled = false; btn.textContent = 'Search';
+}
+
+/* ================= Mosques (Overpass / OpenStreetMap) ================= */
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter'
+];
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * DEG, dLon = (lon2 - lon1) * DEG;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * DEG) * Math.cos(lat2 * DEG) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+async function loadMosques() {
+  if (!state.loc) return;
+  const list = $('mosqueList');
+  list.innerHTML = `<div class="empty"><span class="spin">🕌</span> Searching for mosques near you…</div>`;
+  const radius = $('radiusSel').value;
+  const { lat, lng } = state.loc;
+  const query = `[out:json][timeout:25];
+    (
+      nwr["amenity"="place_of_worship"]["religion"="muslim"](around:${radius},${lat},${lng});
+      nwr["building"="mosque"](around:${radius},${lat},${lng});
+    );
+    out center tags;`;
+
+  let data = null;
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const r = await fetch(endpoint, { method: 'POST', body: 'data=' + encodeURIComponent(query),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+      if (r.ok) { data = await r.json(); break; }
+    } catch (e) { /* try next endpoint */ }
+  }
+  if (!data) {
+    list.innerHTML = `<div class="empty">Could not reach the mosque database right now. Tap Refresh to try again.</div>`;
+    return;
+  }
+
+  const seen = new Set();
+  const mosques = data.elements.map(el => {
+    const mlat = el.lat ?? el.center?.lat, mlng = el.lon ?? el.center?.lon;
+    if (mlat == null) return null;
+    const id = el.type + '/' + el.id;
+    if (seen.has(id)) return null;
+    seen.add(id);
+    return {
+      id,
+      name: el.tags?.name || el.tags?.['name:en'] || 'Mosque (unnamed)',
+      lat: mlat, lng: mlng,
+      distKm: haversineKm(lat, lng, mlat, mlng)
+    };
+  }).filter(Boolean).sort((a, b) => a.distKm - b.distKm).slice(0, 25);
+
+  renderMosques(mosques);
+}
+
+function mosqueCard(m, distKm) {
+  const isFav = state.favorites.some(f => f.id === m.id);
+  const dist = distKm < 1 ? Math.round(distKm * 1000) + ' m' : distKm.toFixed(1) + ' km';
+  const walk = Math.max(1, Math.round(distKm * 12)); // ~5 km/h walking
+  return `<div class="mosque ${isFav ? 'fav' : ''}">
+    <span class="icon">🕌</span>
+    <div class="info">
+      <div class="name">${escapeHtml(m.name)}</div>
+      <div class="meta"><span class="dist">${dist}</span> away · ~${walk} min walk</div>
+    </div>
+    <div class="actions">
+      <a href="https://www.google.com/maps/dir/?api=1&destination=${m.lat},${m.lng}&travelmode=walking" target="_blank" rel="noopener">Directions</a>
+      <button class="star ${isFav ? 'active' : ''}" data-id="${escapeHtml(m.id)}"
+        data-name="${escapeHtml(m.name)}" data-lat="${m.lat}" data-lng="${m.lng}"
+        title="${isFav ? 'Remove favorite' : 'Save as favorite'}">${isFav ? '★' : '☆'}</button>
+    </div>
+  </div>`;
+}
+
+function renderMosques(mosques) {
+  const list = $('mosqueList');
+  window._lastMosques = mosques;
+  if (!mosques.length) {
+    list.innerHTML = `<div class="empty">No mosques found in this radius on OpenStreetMap — try a bigger radius.</div>`;
+  } else {
+    list.innerHTML = mosques.map(m => mosqueCard(m, m.distKm)).join('');
+  }
+  renderFavorites();
+}
+
+function renderFavorites() {
+  const el = $('favList');
+  if (!state.favorites.length) { el.innerHTML = ''; return; }
+  const items = state.favorites.map(f => {
+    const distKm = state.loc ? haversineKm(state.loc.lat, state.loc.lng, f.lat, f.lng) : 0;
+    return { ...f, distKm };
+  }).sort((a, b) => a.distKm - b.distKm);
+  el.innerHTML = `<div class="sub" style="margin:4px 0 0">⭐ Your favorite mosques</div>` +
+    items.map(m => mosqueCard(m, m.distKm)).join('');
+}
+
+function toggleFavorite(btn) {
+  const id = btn.dataset.id;
+  const i = state.favorites.findIndex(f => f.id === id);
+  if (i >= 0) state.favorites.splice(i, 1);
+  else state.favorites.push({ id, name: btn.dataset.name, lat: parseFloat(btn.dataset.lat), lng: parseFloat(btn.dataset.lng) });
+  store.set('favorites', state.favorites);
+  renderMosques(window._lastMosques || []);
+}
+
+/* ================= Wire up ================= */
+$('geoBtn').addEventListener('click', useMyLocation);
+$('searchBtn').addEventListener('click', searchPlace);
+$('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') searchPlace(); });
+$('refreshMosques').addEventListener('click', loadMosques);
+$('radiusSel').addEventListener('change', loadMosques);
+$('notifyBtn').addEventListener('click', toggleNotify);
+$('methodSel').addEventListener('change', e => { state.method = e.target.value; store.set('method', state.method); recomputeTimes(); });
+$('asrSel').addEventListener('change', e => { state.asr = e.target.value; store.set('asr', state.asr); recomputeTimes(); });
+document.addEventListener('click', e => { if (e.target.classList?.contains('star')) toggleFavorite(e.target); });
+
+$('methodSel').value = state.method;
+$('asrSel').value = state.asr;
+renderNotifyBtn();
+
+tickClock();
+setInterval(tickClock, 1000);
+setInterval(() => { renderBoard(); checkNotifications(); }, 15000);
+// recompute at midnight rollover
+let lastDay = new Date().getDate();
+setInterval(() => {
+  const d = new Date().getDate();
+  if (d !== lastDay) { lastDay = d; state.notified = {}; store.set('notified', {}); recomputeTimes(); }
+}, 60000);
+
+if (state.loc) setLocation(state.loc.lat, state.loc.lng, state.loc.name);
+</script>
+</body>
+</html>
