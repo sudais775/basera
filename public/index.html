@@ -3,24 +3,114 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Basera — know a place before you move</title>
+<title>Hayacare — Intimate Wellness for Women</title>
+<meta name="description" content="Hayacare — women's intimate care with natural, safe & effective products. Pakistan based, fast home delivery, worldwide shipping.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <a href="#/" class="logo">Basera<span class="logo-dot">.</span></a>
-      <p class="logo-sub">know a place before you move</p>
+      <a href="#/" class="logo">Hayacare</a>
+      <nav class="topnav">
+        <a href="#shop">Shop</a>
+        <a href="#about">About</a>
+        <a href="#contact">Contact</a>
+      </nav>
+      <button class="cart-btn" id="cart-toggle" aria-label="Open cart">
+        🛍️ <span id="cart-count" class="cart-count">0</span>
+      </button>
     </div>
   </header>
 
-  <main id="app"></main>
+  <main>
+    <section class="hero">
+      <div class="hero-inner">
+        <p class="hero-eyebrow">🌸 Khud pe bharosa, har din 🌸</p>
+        <h1>Hayacare</h1>
+        <p class="hero-sub">Women's intimate care with natural, safe &amp; effective products 💖</p>
+        <p class="hero-tagline">✨ Apni sehat, apni haya, apna confidence ✨</p>
+        <div class="hero-actions">
+          <a href="#shop" class="btn btn-primary">Shop Now</a>
+          <a id="hero-whatsapp" href="#" target="_blank" rel="noopener" class="btn btn-outline">DM for Orders 📩</a>
+        </div>
+        <ul class="hero-badges">
+          <li>🚚 Fast Home Delivery</li>
+          <li>🇵🇰 Pakistan Based, Ships Worldwide</li>
+          <li>🔒 Discreet Packaging</li>
+          <li>🌿 Natural &amp; Organic</li>
+        </ul>
+      </div>
+    </section>
 
-  <footer class="site-footer">
-    <p>Basera — relocation dossiers for the curious and the cautious. Data is illustrative, last updated 2026-05.</p>
+    <section id="shop" class="shop">
+      <h2>Our Products</h2>
+      <p class="shop-sub">By Organic Solution — the makers behind Hayacare</p>
+      <div id="product-grid" class="product-grid" aria-live="polite"></div>
+    </section>
+
+    <section id="about" class="about">
+      <h2>Why Hayacare?</h2>
+      <div class="about-grid">
+        <div class="about-card">
+          <h3>🌿 Natural &amp; Safe</h3>
+          <p>Every product is formulated with organic, skin-friendly ingredients — no harsh chemicals.</p>
+        </div>
+        <div class="about-card">
+          <h3>🤫 Discreet &amp; Respectful</h3>
+          <p>Plain, unmarked packaging for every order, because your privacy matters to us.</p>
+        </div>
+        <div class="about-card">
+          <h3>🚚 Reliable Delivery</h3>
+          <p>Fast home delivery across Pakistan, with secure card checkout for international customers.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="product-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-panel" role="dialog" aria-modal="true">
+      <button class="modal-close" data-close-modal aria-label="Close">✕</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <div id="cart-drawer" class="cart-drawer" hidden>
+    <div class="cart-backdrop" data-close-cart></div>
+    <div class="cart-panel" role="dialog" aria-modal="true" aria-label="Shopping cart">
+      <div class="cart-header">
+        <h2>Your Cart</h2>
+        <button class="modal-close" data-close-cart aria-label="Close cart">✕</button>
+      </div>
+      <div id="cart-items" class="cart-items"></div>
+      <div class="cart-footer">
+        <div class="cart-total-row">
+          <span>Total</span>
+          <span id="cart-total">$0.00</span>
+        </div>
+        <p id="cart-note" class="cart-note"></p>
+        <button id="checkout-btn" class="btn btn-primary btn-block">Checkout Securely 🔒</button>
+        <a id="cart-whatsapp" href="#" target="_blank" rel="noopener" class="btn btn-outline btn-block">Order via WhatsApp Instead</a>
+      </div>
+    </div>
+  </div>
+
+  <footer id="contact" class="site-footer">
+    <div class="footer-inner">
+      <div>
+        <p class="footer-logo">Hayacare</p>
+        <p>Women's intimate care, made with haya and heart. 🇵🇰</p>
+      </div>
+      <div class="footer-links">
+        <a id="footer-whatsapp" href="#" target="_blank" rel="noopener">📩 DM for Orders</a>
+        <a id="footer-instagram" href="#" target="_blank" rel="noopener">Instagram</a>
+        <a id="footer-email" href="#">Email</a>
+      </div>
+    </div>
+    <p class="footer-copy">© <span id="footer-year"></span> Hayacare — Organic Solution. All rights reserved.</p>
   </footer>
 
 <script src="app.js"></script>

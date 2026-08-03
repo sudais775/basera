@@ -1,0 +1,102 @@
+[
+  {
+    "id": "hayacare-vaginal-cream",
+    "name": "Hayacare Vaginal Moisturizing Cream",
+    "tagline": "Vaginal Moisturizing... Made Easier",
+    "category": "Women's Intimate Care",
+    "badge": "Signature",
+    "image": "/images/products/hayacare-vaginal-cream.jpg",
+    "accent": "rose",
+    "priceUSD": 14.99,
+    "pricePKR": 2199,
+    "size": "60g",
+    "shortDescription": "A gentle, fragrance-conscious moisturizing cream made for everyday intimate comfort.",
+    "description": "Hayacare's flagship intimate moisturizer is formulated with soothing, skin-friendly ingredients to support daily comfort, hydration and confidence. Lightweight, easy to apply, and made with modesty in mind.",
+    "highlights": [
+      "Gentle daily hydration for intimate skin",
+      "Free from harsh chemicals",
+      "Easy, discreet application",
+      "Suitable for sensitive skin"
+    ]
+  },
+  {
+    "id": "vagina-tightening-cream",
+    "name": "Vagina Tightening Cream",
+    "tagline": "Advance Tightening Formula",
+    "category": "Women's Intimate Care",
+    "badge": "Best Seller",
+    "image": "/images/products/vagina-tightening-cream.jpg",
+    "accent": "mono",
+    "priceUSD": 17.99,
+    "pricePKR": 2799,
+    "size": "50g",
+    "shortDescription": "An organic tightening cream designed to restore firmness and confidence.",
+    "description": "Formulated with natural, organic ingredients, this advanced tightening cream is designed for women seeking a gentle, effective way to restore firmness and everyday confidence.",
+    "highlights": [
+      "100% organic formula",
+      "Restores firmness gradually",
+      "Free of parabens & sulphates",
+      "For regular, gentle use"
+    ]
+  },
+  {
+    "id": "likoria-care",
+    "name": "Likoria Care",
+    "tagline": "Perfect Remedy for Leukorrhea",
+    "category": "Women's Intimate Care",
+    "badge": "New",
+    "image": "/images/products/likoria-care.jpg",
+    "accent": "magenta",
+    "priceUSD": 13.49,
+    "pricePKR": 1999,
+    "size": "30 capsules / 15-day course",
+    "shortDescription": "Herbal capsules formulated to ease irregular periods, cramps and Leukorrhea symptoms.",
+    "description": "Likoria Care is a 15-day organic capsule course made to help balance periods, ease cramps and pain, and support relief from Leukorrhea (white discharge) naturally.",
+    "highlights": [
+      "Eases cramps and period pain",
+      "Helps balance irregular periods",
+      "15-day course, 30 capsules",
+      "Organic solution, no harsh chemicals"
+    ]
+  },
+  {
+    "id": "manmax",
+    "name": "ManMax",
+    "tagline": "Improves Sexual Health, Naturally",
+    "category": "Men's Wellness",
+    "badge": "For Men",
+    "image": "/images/products/manmax.jpg",
+    "accent": "olive",
+    "priceUSD": 19.99,
+    "pricePKR": 3199,
+    "size": "30 capsules / 1-month course",
+    "shortDescription": "100% all-natural capsules made to support men's sexual health, for young and old.",
+    "description": "ManMax is a one-month course of all-natural capsules formulated to support healthy sexual wellness in men of all ages, made by Organic Solution — the makers behind Hayacare.",
+    "highlights": [
+      "100% all-natural ingredients",
+      "For both young & old, healthy men",
+      "1-month course, 30 capsules",
+      "Discreet packaging on delivery"
+    ]
+  },
+  {
+    "id": "joint-care",
+    "name": "Joint Care",
+    "tagline": "For All Kinds of Joints",
+    "category": "Wellness",
+    "badge": null,
+    "image": "/images/products/joint-care.jpg",
+    "accent": "gold",
+    "priceUSD": 11.99,
+    "pricePKR": 1699,
+    "size": "30ml",
+    "shortDescription": "A soothing herbal oil for everyday joint and muscle comfort.",
+    "description": "Joint Care is a 30ml herbal oil made to soothe everyday joint discomfort, formulated for all kinds of joints and gentle enough for daily massage use.",
+    "highlights": [
+      "For knees, shoulders, elbows & more",
+      "Herbal, easy-absorb formula",
+      "30ml dropper bottle",
+      "Daily massage friendly"
+    ]
+  }
+]

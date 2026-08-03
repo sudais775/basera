@@ -2,75 +2,80 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
-const useSupabase = !!(SUPABASE_URL && SUPABASE_KEY && !SUPABASE_URL.includes('your-project-ref'));
+const TWOCHECKOUT_MERCHANT_CODE = process.env.TWOCHECKOUT_MERCHANT_CODE || '';
+const TWOCHECKOUT_MODE = (process.env.TWOCHECKOUT_MODE || 'SANDBOX').toUpperCase();
+const checkoutConfigured = !!TWOCHECKOUT_MERCHANT_CODE;
 
-const supabase = useSupabase ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-const localCities = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'cities.json'), 'utf-8'));
+const products = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'products.json'), 'utf-8'));
+const storeConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'store-config.json'), 'utf-8'));
 
-async function getCities() {
-  if (!useSupabase) return localCities;
-  const { data, error } = await supabase.from('cities').select('data');
-  if (error) {
-    console.error('Supabase error, falling back to local data:', error.message);
-    return localCities;
-  }
-  return data.map(row => row.data);
-}
-
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/api/continents', async (req, res) => {
-  const cities = await getCities();
-  res.json([...new Set(cities.map(c => c.continent))].sort());
+app.get('/api/products', (req, res) => {
+  res.json(products);
 });
 
-app.get('/api/search', async (req, res) => {
-  const q = (req.query.q || '').toLowerCase().trim();
-  const { continent, max_budget, min_safety, min_affordability, digital_nomad } = req.query;
+app.get('/api/config', (req, res) => {
+  res.json({
+    ...storeConfig,
+    checkoutConfigured,
+    checkoutMode: TWOCHECKOUT_MODE
+  });
+});
 
-  let results = await getCities();
-
-  if (q) {
-    results = results.filter(c =>
-      c.name.toLowerCase().includes(q) || c.country.toLowerCase().includes(q)
-    );
-  }
-  if (continent) {
-    results = results.filter(c => c.continent === continent);
-  }
-  if (max_budget) {
-    results = results.filter(c => c.monthly_budget_single <= Number(max_budget));
-  }
-  if (min_safety) {
-    results = results.filter(c => c.scores.safety >= Number(min_safety));
-  }
-  if (min_affordability) {
-    results = results.filter(c => c.scores.affordability >= Number(min_affordability));
-  }
-  if (digital_nomad === 'true') {
-    results = results.filter(c => {
-      const dn = c.visa.digital_nomad.toLowerCase();
-      return dn.includes('available') && !dn.startsWith('not');
+// Builds a 2Checkout / Verifone ConvertPlus hosted checkout link server-side,
+// so prices always come from data/products.json and can't be tampered with client-side.
+app.post('/api/checkout', (req, res) => {
+  if (!checkoutConfigured) {
+    return res.status(503).json({
+      error: 'Card checkout is not configured yet. Please order via WhatsApp for now.'
     });
   }
 
-  res.json(results);
-});
+  const items = Array.isArray(req.body.items) ? req.body.items : [];
+  if (!items.length) {
+    return res.status(400).json({ error: 'Cart is empty.' });
+  }
 
-app.get('/api/city/:slug', async (req, res) => {
-  const cities = await getCities();
-  const city = cities.find(c => c.slug === req.params.slug);
-  if (!city) return res.status(404).json({ error: 'City not found' });
-  res.json(city);
+  const lineParams = [];
+  let count = 0;
+  items.forEach((item) => {
+    const product = products.find(p => p.id === item.id);
+    if (!product) return;
+    const qty = Math.max(1, Math.min(20, Number(item.qty) || 1));
+    lineParams.push(`li_${count}_type=product`);
+    lineParams.push(`li_${count}_name=${encodeURIComponent(product.name)}`);
+    lineParams.push(`li_${count}_price=${product.priceUSD.toFixed(2)}`);
+    lineParams.push(`li_${count}_quantity=${qty}`);
+    lineParams.push(`li_${count}_tangible=Y`);
+    count += 1;
+  });
+
+  if (!count) {
+    return res.status(400).json({ error: 'No valid items found.' });
+  }
+
+  const base = TWOCHECKOUT_MODE === 'PRODUCTION'
+    ? 'https://secure.2checkout.com/checkout/buy'
+    : 'https://sandbox.2checkout.com/checkout/buy';
+
+  const returnUrl = typeof req.body.returnUrl === 'string' ? req.body.returnUrl : '';
+
+  const url = `${base}?merchant=${encodeURIComponent(TWOCHECKOUT_MERCHANT_CODE)}`
+    + `&dynamic=1&currency=USD&${lineParams.join('&')}`
+    + (returnUrl ? `&return-url=${encodeURIComponent(returnUrl)}&return-type=redirect` : '');
+
+  res.json({ url });
 });
 
 app.listen(PORT, () => {
-  console.log(`Basera running at http://localhost:${PORT} (data source: ${useSupabase ? 'Supabase' : 'local JSON'})`);
+  console.log(
+    `Hayacare store running at http://localhost:${PORT} ` +
+    `(card checkout: ${checkoutConfigured ? TWOCHECKOUT_MODE : 'not configured, WhatsApp fallback only'})`
+  );
 });

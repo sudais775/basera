@@ -1,12 +1,12 @@
 services:
   - type: web
-    name: basera
+    name: hayacare-store
     runtime: node
     plan: free
     buildCommand: npm install
     startCommand: node server.js
     envVars:
-      - key: SUPABASE_URL
+      - key: TWOCHECKOUT_MERCHANT_CODE
         sync: false
-      - key: SUPABASE_KEY
-        sync: false
+      - key: TWOCHECKOUT_MODE
+        value: PRODUCTION

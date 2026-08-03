@@ -1,434 +1,298 @@
-const app = document.getElementById('app');
+const PLACEHOLDER_ICONS = {
+  'hayacare-vaginal-cream': '🌸',
+  'vagina-tightening-cream': '🤍',
+  'likoria-care': '🎗️',
+  'manmax': '💪',
+  'joint-care': '🦵'
+};
 
-// --- Supabase (read-only, safe to expose) ---
-const SUPABASE_URL = 'https://ttuonmnduymoufxvnyhd.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_fYpIfj-vQQSBKmrqloLCPw_NSb8PFke';
-let _citiesCache = null;
+const state = {
+  products: [],
+  config: null,
+  cart: loadCart()
+};
 
-async function fetchAllCities() {
-  if (_citiesCache) return _citiesCache;
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/cities?select=data`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+function loadCart() {
+  try {
+    return JSON.parse(localStorage.getItem('hayacare-cart') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveCart() {
+  localStorage.setItem('hayacare-cart', JSON.stringify(state.cart));
+}
+
+function whatsappLink(number, text) {
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
+
+function money(n) {
+  return `$${n.toFixed(2)}`;
+}
+
+async function init() {
+  const [productsRes, configRes] = await Promise.all([
+    fetch('/api/products'),
+    fetch('/api/config')
+  ]);
+  state.products = await productsRes.json();
+  state.config = await configRes.json();
+
+  wireHeaderAndFooter();
+  renderProducts();
+  updateCartCount();
+  wireGlobalEvents();
+}
+
+function wireHeaderAndFooter() {
+  const { whatsappNumber, instagram, email, storeName } = state.config;
+  const dmText = `Hi ${storeName}! I'd like to know more about your products.`;
+  document.getElementById('hero-whatsapp').href = whatsappLink(whatsappNumber, dmText);
+  document.getElementById('footer-whatsapp').href = whatsappLink(whatsappNumber, dmText);
+  document.getElementById('footer-instagram').href = `https://instagram.com/${instagram}`;
+  document.getElementById('footer-email').href = `mailto:${email}`;
+  document.getElementById('footer-year').textContent = new Date().getFullYear();
+}
+
+function renderProducts() {
+  const grid = document.getElementById('product-grid');
+  grid.innerHTML = state.products.map(productCardHTML).join('');
+
+  grid.querySelectorAll('[data-open-product]').forEach(el => {
+    el.addEventListener('click', () => openProductModal(el.dataset.openProduct));
   });
-  if (!res.ok) throw new Error('Supabase fetch failed');
-  const rows = await res.json();
-  _citiesCache = rows.map(r => r.data).sort((a, b) => a.name.localeCompare(b.name));
-  return _citiesCache;
+  grid.querySelectorAll('[data-quick-add]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      addToCart(el.dataset.quickAdd, 1);
+      openCart();
+    });
+  });
 }
 
-const SCORE_LABELS = {
-  affordability: 'Affordability',
-  safety: 'Safety',
-  healthcare: 'Healthcare',
-  internet: 'Internet',
-  expat_friendliness: 'Expat friendliness'
-};
-
-const COST_LABELS = {
-  rent_1br_center: '1BR rent (center)',
-  rent_1br_outside: '1BR rent (outside center)',
-  rent_2br_center: '2BR rent (center)',
-  groceries: 'Groceries (monthly)',
-  transport_pass: 'Transport pass',
-  utilities: 'Utilities',
-  internet: 'Internet',
-  childcare: 'Childcare (per child)',
-  meal_out: 'Meal out (per person)'
-};
-
-function fmt(n) {
-  return '$' + Number(n).toLocaleString('en-US');
+function productCardHTML(p) {
+  const icon = PLACEHOLDER_ICONS[p.id] || '🌿';
+  return `
+    <article class="product-card accent-${p.accent}" data-open-product="${p.id}">
+      <div class="product-media">
+        ${p.badge ? `<span class="product-badge">${p.badge}</span>` : ''}
+        <img src="${p.image}" alt="${p.name}" loading="lazy"
+             onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'placeholder-icon',textContent:'${icon}'}))">
+      </div>
+      <div class="product-body">
+        <p class="product-category">${p.category}</p>
+        <h3>${p.name}</h3>
+        <p class="product-tagline">${p.tagline}</p>
+        <p class="product-price">${money(p.priceUSD)} <span class="pkr">/ Rs. ${p.pricePKR.toLocaleString()}</span></p>
+        <div class="product-actions">
+          <button class="btn btn-ghost" data-open-product="${p.id}">Details</button>
+          <button class="btn btn-primary" data-quick-add="${p.id}">Add to Cart</button>
+        </div>
+      </div>
+    </article>
+  `;
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+function openProductModal(id) {
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  const icon = PLACEHOLDER_ICONS[p.id] || '🌿';
+  const modal = document.getElementById('product-modal');
+  document.getElementById('modal-content').innerHTML = `
+    <div class="modal-body">
+      <div class="modal-media accent-${p.accent} product-media">
+        <img src="${p.image}" alt="${p.name}"
+             onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'placeholder-icon',textContent:'${icon}'}))">
+      </div>
+      <div class="modal-info">
+        <p class="product-category">${p.category}</p>
+        <h2>${p.name}</h2>
+        <p class="product-tagline">${p.tagline}</p>
+        <p>${p.description}</p>
+        <ul class="modal-highlights">
+          ${p.highlights.map(h => `<li>${h}</li>`).join('')}
+        </ul>
+        <p class="product-price">${money(p.priceUSD)} <span class="pkr">/ Rs. ${p.pricePKR.toLocaleString()} · ${p.size}</span></p>
+        <div class="modal-qty">
+          <button data-qty="-1">−</button>
+          <span id="modal-qty-value">1</span>
+          <button data-qty="1">+</button>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="modal-add-cart">Add to Cart</button>
+          <a class="btn btn-outline" href="${whatsappLink(state.config.whatsappNumber, `Hi ${state.config.storeName}! I'd like to order: ${p.name}.`)}" target="_blank" rel="noopener">Order via WhatsApp</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  let qty = 1;
+  const qtyValue = document.getElementById('modal-qty-value');
+  modal.querySelectorAll('[data-qty]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      qty = Math.max(1, Math.min(20, qty + Number(btn.dataset.qty)));
+      qtyValue.textContent = qty;
+    });
+  });
+  document.getElementById('modal-add-cart').addEventListener('click', () => {
+    addToCart(p.id, qty);
+    closeModal();
+    openCart();
+  });
+
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
 }
 
-async function router() {
-  const hash = window.location.hash || '#/';
-  if (hash.startsWith('#/city/')) {
-    const slug = hash.replace('#/city/', '');
-    await renderCity(slug);
+function closeModal() {
+  document.getElementById('product-modal').hidden = true;
+  document.body.style.overflow = '';
+}
+
+function addToCart(id, qty) {
+  const existing = state.cart.find(item => item.id === id);
+  if (existing) {
+    existing.qty = Math.min(20, existing.qty + qty);
   } else {
-    await renderHome();
-    return;
+    state.cart.push({ id, qty });
   }
-  window.scrollTo(0, 0);
+  saveCart();
+  updateCartCount();
+  renderCart();
 }
 
-const CONTINENTS = ['North America', 'South America', 'Europe', 'Africa', 'Middle East', 'Asia', 'Oceania'];
-
-const filterState = {
-  q: '',
-  continent: '',
-  max_budget: '',
-  min_safety: '',
-  min_affordability: '',
-  digital_nomad: false
-};
-
-function pillGroup(options, current) {
-  return options.map(([value, label]) => `
-    <button type="button" class="pill ${current === value ? 'active' : ''}" data-value="${value}">${label}</button>
-  `).join('');
-}
-
-function hasActiveFilters() {
-  return !!(filterState.q || filterState.continent || filterState.max_budget || filterState.min_safety || filterState.min_affordability || filterState.digital_nomad);
-}
-
-async function renderHome() {
-  const tabs = CONTINENTS.map(name => `
-    <button class="continent-tab ${filterState.continent === name ? 'active' : ''}" data-continent="${name}">${name}</button>
-  `).join('');
-
-  app.innerHTML = `
-    <section class="hero">
-      <h1>Know a place before you move.</h1>
-      <p>Search a city to get the full relocation dossier — real costs, visa routes, neighborhoods, and the honest stuff nobody puts in a brochure.</p>
-      <div class="search-wrap">
-        <input type="text" id="search-input" placeholder="Search by city or country..." value="${escapeHtml(filterState.q)}" autocomplete="off">
-      </div>
-    </section>
-
-    <section class="map-section">
-      <h2>Browse by continent</h2>
-      <div class="continent-tabs">${tabs}</div>
-      ${filterState.continent ? `<button id="clear-continent" class="chip-clear">Clear continent: ${filterState.continent} &times;</button>` : ''}
-    </section>
-
-    <section class="filters">
-      <h2>Filters</h2>
-      <div class="filters-grid">
-        <div class="filter-group">
-          <span class="filter-label">Budget (single)</span>
-          <div class="pill-row" data-filter="max_budget">
-            ${pillGroup([['', 'Any'], ['800', 'Under $800'], ['1200', 'Under $1.2k'], ['2000', 'Under $2k'], ['3000', 'Under $3k']], filterState.max_budget)}
-          </div>
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">Safety</span>
-          <div class="pill-row" data-filter="min_safety">
-            ${pillGroup([['', 'Any'], ['6', '6+'], ['7', '7+'], ['8', '8+'], ['9', '9+']], filterState.min_safety)}
-          </div>
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">Affordability</span>
-          <div class="pill-row" data-filter="min_affordability">
-            ${pillGroup([['', 'Any'], ['6', '6+'], ['7', '7+'], ['8', '8+']], filterState.min_affordability)}
-          </div>
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">Visa</span>
-          <div class="pill-row" data-filter="digital_nomad">
-            ${pillGroup([['false', 'Any'], ['true', 'Nomad visa available']], String(filterState.digital_nomad))}
-          </div>
-        </div>
-        ${hasActiveFilters() ? `<button id="f-clear" class="chip-clear">Clear all filters</button>` : ''}
-      </div>
-    </section>
-
-    <div id="city-grid" class="city-grid"></div>
-  `;
-
-  const input = document.getElementById('search-input');
-  input.focus();
-  input.setSelectionRange(input.value.length, input.value.length);
-  input.addEventListener('input', (e) => { filterState.q = e.target.value; loadCities(); });
-
-  document.querySelectorAll('.continent-tab').forEach(el => {
-    el.addEventListener('click', () => {
-      const c = el.dataset.continent;
-      filterState.continent = filterState.continent === c ? '' : c;
-      renderHome();
-    });
-  });
-
-  const clearContinent = document.getElementById('clear-continent');
-  if (clearContinent) clearContinent.addEventListener('click', () => { filterState.continent = ''; renderHome(); });
-
-  document.querySelectorAll('.pill-row').forEach(row => {
-    const key = row.dataset.filter;
-    row.querySelectorAll('.pill').forEach(pill => {
-      pill.addEventListener('click', () => {
-        const val = pill.dataset.value;
-        if (key === 'digital_nomad') {
-          filterState.digital_nomad = val === 'true';
-        } else {
-          filterState[key] = val;
-        }
-        renderHome();
-      });
-    });
-  });
-
-  const fClear = document.getElementById('f-clear');
-  if (fClear) fClear.addEventListener('click', () => {
-    filterState.q = ''; filterState.continent = ''; filterState.max_budget = '';
-    filterState.min_safety = ''; filterState.min_affordability = ''; filterState.digital_nomad = false;
-    renderHome();
-  });
-
-  await loadCities();
-}
-
-async function loadCities() {
-  const grid = document.getElementById('city-grid');
-  grid.innerHTML = '<p class="no-results">Loading...</p>';
-  try {
-    let cities = await fetchAllCities();
-    const q = filterState.q.toLowerCase().trim();
-    if (q) cities = cities.filter(c => c.name.toLowerCase().includes(q) || c.country.toLowerCase().includes(q));
-    if (filterState.continent) cities = cities.filter(c => c.continent === filterState.continent);
-    if (filterState.max_budget) cities = cities.filter(c => c.monthly_budget_single <= Number(filterState.max_budget));
-    if (filterState.min_safety) cities = cities.filter(c => c.scores.safety >= Number(filterState.min_safety));
-    if (filterState.min_affordability) cities = cities.filter(c => c.scores.affordability >= Number(filterState.min_affordability));
-    if (filterState.digital_nomad) cities = cities.filter(c => {
-      const dn = c.visa.digital_nomad.toLowerCase();
-      return dn.includes('available') && !dn.startsWith('not');
-    });
-    if (!cities.length) {
-      grid.innerHTML = `<p class="no-results">No cities match these filters. Try loosening them.</p>`;
-      return;
-    }
-    grid.innerHTML = `<p class="result-count">${cities.length} ${cities.length === 1 ? 'city' : 'cities'}</p>` + cities.map(cityCard).join('');
-  } catch (err) {
-    grid.innerHTML = `<p class="no-results">Something went wrong loading cities.</p>`;
+function updateCartQty(id, delta) {
+  const item = state.cart.find(x => x.id === id);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) {
+    state.cart = state.cart.filter(x => x.id !== id);
   }
+  saveCart();
+  updateCartCount();
+  renderCart();
 }
 
-const CONTINENT_CLASS = {
-  'North America': 'accent-blue',
-  'South America': 'accent-green',
-  'Europe': 'accent-purple',
-  'Africa': 'accent-orange',
-  'Middle East': 'accent-pink',
-  'Asia': 'accent-teal',
-  'Oceania': 'accent-blue'
-};
-
-function cityCard(city) {
-  const accent = CONTINENT_CLASS[city.continent] || 'accent-blue';
-  return `
-    <a class="city-card ${accent}" href="#/city/${city.slug}">
-      <span class="flag">${city.flag}</span>
-      <h3>${escapeHtml(city.name)}</h3>
-      <span class="country">${escapeHtml(city.country)}</span>
-      <p class="tagline">${escapeHtml(city.tagline)}</p>
-      <span class="stamp">
-        Single budget
-        <span class="stamp-amount">${fmt(city.monthly_budget_single)}/mo</span>
-      </span>
-    </a>
-  `;
+function removeFromCart(id) {
+  state.cart = state.cart.filter(x => x.id !== id);
+  saveCart();
+  updateCartCount();
+  renderCart();
 }
 
-async function renderCity(slug) {
-  app.innerHTML = `<p class="no-results">Loading dossier...</p>`;
-  try {
-    const cities = await fetchAllCities();
-    const c = cities.find(city => city.slug === slug);
-    if (!c) {
-      app.innerHTML = `
-        <a href="#/" class="back-link">&larr; Back to all cities</a>
-        <p class="no-results">City not found.</p>
+function updateCartCount() {
+  const count = state.cart.reduce((sum, item) => sum + item.qty, 0);
+  document.getElementById('cart-count').textContent = count;
+}
+
+function cartLines() {
+  return state.cart
+    .map(item => ({ ...item, product: state.products.find(p => p.id === item.id) }))
+    .filter(line => line.product);
+}
+
+function renderCart() {
+  const lines = cartLines();
+  const itemsEl = document.getElementById('cart-items');
+  const total = lines.reduce((sum, l) => sum + l.product.priceUSD * l.qty, 0);
+
+  if (!lines.length) {
+    itemsEl.innerHTML = `<p class="cart-empty">Your cart is empty. Add a product to get started 🌸</p>`;
+  } else {
+    itemsEl.innerHTML = lines.map(l => {
+      const icon = PLACEHOLDER_ICONS[l.id] || '🌿';
+      return `
+        <div class="cart-item">
+          <div class="cart-item-media accent-${l.product.accent} product-media">
+            <img src="${l.product.image}" alt="${l.product.name}"
+                 onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'placeholder-icon',textContent:'${icon}'}))">
+          </div>
+          <div class="cart-item-info">
+            <p>${l.product.name}</p>
+            <p class="cart-item-price">${money(l.product.priceUSD)} × ${l.qty}</p>
+            <div class="cart-item-qty">
+              <button data-cart-dec="${l.id}">−</button>
+              <span>${l.qty}</span>
+              <button data-cart-inc="${l.id}">+</button>
+            </div>
+            <button class="cart-item-remove" data-cart-remove="${l.id}">Remove</button>
+          </div>
+        </div>
       `;
-      return;
-    }
-    app.innerHTML = cityProfile(c);
-  } catch (err) {
-    app.innerHTML = `<p class="no-results">Something went wrong loading this dossier.</p>`;
+    }).join('');
+
+    itemsEl.querySelectorAll('[data-cart-inc]').forEach(b => b.addEventListener('click', () => updateCartQty(b.dataset.cartInc, 1)));
+    itemsEl.querySelectorAll('[data-cart-dec]').forEach(b => b.addEventListener('click', () => updateCartQty(b.dataset.cartDec, -1)));
+    itemsEl.querySelectorAll('[data-cart-remove]').forEach(b => b.addEventListener('click', () => removeFromCart(b.dataset.cartRemove)));
+  }
+
+  document.getElementById('cart-total').textContent = money(total);
+
+  const checkoutBtn = document.getElementById('checkout-btn');
+  const note = document.getElementById('cart-note');
+  const whatsappText = lines.length
+    ? `Hi ${state.config.storeName}! I'd like to order:\n` +
+      lines.map(l => `- ${l.product.name} x${l.qty}`).join('\n')
+    : `Hi ${state.config.storeName}! I'd like to place an order.`;
+  document.getElementById('cart-whatsapp').href = whatsappLink(state.config.whatsappNumber, whatsappText);
+
+  if (!state.config.checkoutConfigured) {
+    checkoutBtn.disabled = true;
+    note.textContent = 'Card checkout is being set up — order via WhatsApp for now.';
+  } else {
+    checkoutBtn.disabled = !lines.length;
+    note.textContent = 'Secure international card checkout via 2Checkout / Verifone.';
   }
 }
 
-function cityProfile(c) {
-  const scoreRows = Object.entries(c.scores).map(([key, val]) => `
-    <div class="score-row">
-      <span class="label">${SCORE_LABELS[key] || key}</span>
-      <div class="score-bar-track"><div class="score-bar-fill" style="width:${val * 10}%"></div></div>
-      <span class="val">${val}/10</span>
-    </div>
-  `).join('');
+async function startCheckout() {
+  const lines = cartLines();
+  if (!lines.length) return;
 
-  const costRows = Object.entries(c.costs).map(([key, val]) => `
-    <tr><td>${COST_LABELS[key] || key}</td><td>${fmt(val)}</td></tr>
-  `).join('');
+  const btn = document.getElementById('checkout-btn');
+  btn.disabled = true;
+  btn.textContent = 'Redirecting…';
 
-  const neighborhoods = c.neighborhoods.map(n => `
-    <div class="neigh-card">
-      <h4>${escapeHtml(n.name)}</h4>
-      <p class="vibe">${escapeHtml(n.vibe)}</p>
-      <p class="rent-note">${escapeHtml(n.rent_note)}</p>
-    </div>
-  `).join('');
-
-  const goodStuff = c.good_stuff.map(item => `<li>${escapeHtml(item)}</li>`).join('');
-  const watchOut = c.watch_out.map(item => `<li>${escapeHtml(item)}</li>`).join('');
-
-  const dnAvailable = c.visa.digital_nomad.toLowerCase().includes('available') && !c.visa.digital_nomad.toLowerCase().includes('not');
-  const dnClass = dnAvailable ? 'available' : 'unavailable';
-
-  const visaOptions = c.visa.options.map(o => `<li>${escapeHtml(o)}</li>`).join('');
-
-  return `
-    <a href="#/" class="back-link">&larr; Back to all cities</a>
-
-    <div class="profile-head">
-      <div class="title-block">
-        <span class="flag-big">${c.flag}</span>
-        <h1>${escapeHtml(c.name)}</h1>
-        <span class="country">${escapeHtml(c.country)}</span>
-        <p class="tagline">${escapeHtml(c.tagline)}</p>
-        <p class="last-updated">Last updated: ${escapeHtml(c.last_updated)}</p>
-      </div>
-      <div class="stamps-row">
-        <span class="stamp large">
-          Single, monthly
-          <span class="stamp-amount">${fmt(c.monthly_budget_single)}</span>
-        </span>
-        <span class="stamp large">
-          Family, monthly
-          <span class="stamp-amount">${fmt(c.monthly_budget_family)}</span>
-        </span>
-      </div>
-    </div>
-
-    <div class="dossier-grid">
-      <div class="section">
-        <h2>Livability scores <span class="tag">0–10</span></h2>
-        ${scoreRows}
-      </div>
-
-      <div class="section">
-        <h2>Cost of living <span class="tag">USD / month</span></h2>
-        <table class="cost-table"><tbody>${costRows}</tbody></table>
-      </div>
-
-      <div class="section">
-        <h2>Income reality <span class="tag">average net salary</span></h2>
-        <div class="income-figure">${fmt(c.income.average_net_salary)}/mo</div>
-        <p class="income-note">${escapeHtml(c.income.note)}</p>
-      </div>
-
-      <div class="visa-box">
-        <h2>Visa &amp; digital nomad status <span class="tag">immigration</span></h2>
-        <span class="dn-status ${dnClass}">Digital nomad visa: ${escapeHtml(c.visa.digital_nomad)}</span>
-        <p class="income-req">Income requirement: ${escapeHtml(c.visa.income_requirement)}</p>
-        <p>${escapeHtml(c.visa.summary)}</p>
-        <h3 style="margin-top:1rem;font-size:0.95rem;">Routes in</h3>
-        <ul>${visaOptions}</ul>
-      </div>
-
-      <div class="section">
-        <h2>Taxes <span class="tag">what to expect</span></h2>
-        <p>${escapeHtml(c.taxes)}</p>
-      </div>
-
-      <div class="section span-2">
-        <h2>Neighborhoods <span class="tag">where to live</span></h2>
-        <div class="neigh-grid">${neighborhoods}</div>
-      </div>
-
-      <div class="section span-2">
-        <h2>The good &amp; the watch-outs</h2>
-        <div class="two-col">
-          <div class="col-good">
-            <h3>Good stuff</h3>
-            <ul>${goodStuff}</ul>
-          </div>
-          <div class="col-watch">
-            <h3>Watch out for</h3>
-            <ul>${watchOut}</ul>
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <h2>Trend &amp; direction <span class="tag">where it's heading</span></h2>
-        <p>${escapeHtml(c.trend)}</p>
-      </div>
-
-      <div class="section">
-        <h2>Community &amp; cultural fit <span class="tag">for Pakistani movers</span></h2>
-        <p>${escapeHtml(c.community)}</p>
-      </div>
-
-      ${liveUpdates(c)}
-
-      ${famousAndSocial(c)}
-    </div>
-  `;
+  try {
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: lines.map(l => ({ id: l.id, qty: l.qty })),
+        returnUrl: window.location.origin
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Checkout failed.');
+    window.location.href = data.url;
+  } catch (err) {
+    alert(err.message);
+    btn.disabled = false;
+    btn.textContent = 'Checkout Securely 🔒';
+  }
 }
 
-function liveUpdates(c) {
-  const origins = [
-    ['Karachi', 'Karachi'],
-    ['Lahore', 'Lahore'],
-    ['Islamabad', 'Islamabad']
-  ];
-  const flightBtns = origins.map(([label, city]) => {
-    const url = `https://www.google.com/travel/flights?q=${encodeURIComponent('Flights from ' + city + ' to ' + c.name)}`;
-    return `<a href="${url}" target="_blank" rel="noopener" class="live-pill">✈️ From ${label}</a>`;
-  }).join('');
-
-  const visaNews = `https://news.google.com/search?q=${encodeURIComponent(c.country + ' visa news Pakistani passport')}`;
-  const cityNews = `https://news.google.com/search?q=${encodeURIComponent(c.name + ' ' + c.country + ' news')}`;
-
-  return `
-    <div class="section span-2 live-section">
-      <h2>Live updates <span class="tag">real-time when you click</span></h2>
-      <div class="two-col">
-        <div>
-          <h3>✈️ Live flight prices</h3>
-          <p class="live-note">Current fares to ${escapeHtml(c.name)}, pulled live from Google Flights:</p>
-          <div class="live-pills">${flightBtns}</div>
-        </div>
-        <div>
-          <h3>📰 Latest visa &amp; local news</h3>
-          <p class="live-note">Up-to-the-minute headlines — updated automatically:</p>
-          <div class="live-pills">
-            <a href="${visaNews}" target="_blank" rel="noopener" class="live-pill news">🛂 ${escapeHtml(c.country)} visa news</a>
-            <a href="${cityNews}" target="_blank" rel="noopener" class="live-pill news">🗞️ ${escapeHtml(c.name)} headlines</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+function openCart() {
+  renderCart();
+  document.getElementById('cart-drawer').hidden = false;
+  document.body.style.overflow = 'hidden';
 }
 
-function famousAndSocial(c) {
-  if (!c.famous_people && !c.social) return '';
-
-  const famous = (c.famous_people || []).map(p => `<li>${escapeHtml(p)}</li>`).join('');
-
-  const socialLinks = c.social ? `
-    <div class="social-links">
-      <a href="${c.social.instagram}" target="_blank" rel="noopener" class="social-pill">📷 Instagram</a>
-      <a href="${c.social.youtube}" target="_blank" rel="noopener" class="social-pill">▶️ YouTube</a>
-      <a href="${c.social.tiktok}" target="_blank" rel="noopener" class="social-pill">🎵 TikTok</a>
-      <a href="${c.social.reddit}" target="_blank" rel="noopener" class="social-pill">💬 Reddit</a>
-    </div>
-  ` : '';
-
-  return `
-    <div class="section span-2 social-section">
-      <h2>See it for yourself <span class="tag">social &amp; famous faces</span></h2>
-      <div class="two-col">
-        <div>
-          <h3>Famous people from ${escapeHtml(c.country)}</h3>
-          <ul>${famous}</ul>
-        </div>
-        <div>
-          <h3>What it looks like</h3>
-          <p style="color:#5c6962;font-size:0.9rem;margin-bottom:0.7rem;">Browse real photos and videos from ${escapeHtml(c.name)} before you decide.</p>
-          ${socialLinks}
-        </div>
-      </div>
-    </div>
-  `;
+function closeCart() {
+  document.getElementById('cart-drawer').hidden = true;
+  document.body.style.overflow = '';
 }
 
-window.addEventListener('hashchange', router);
-window.addEventListener('DOMContentLoaded', router);
+function wireGlobalEvents() {
+  document.getElementById('cart-toggle').addEventListener('click', openCart);
+  document.querySelectorAll('[data-close-modal]').forEach(el => el.addEventListener('click', closeModal));
+  document.querySelectorAll('[data-close-cart]').forEach(el => el.addEventListener('click', closeCart));
+  document.getElementById('checkout-btn').addEventListener('click', startCheckout);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { closeModal(); closeCart(); }
+  });
+}
+
+init();
